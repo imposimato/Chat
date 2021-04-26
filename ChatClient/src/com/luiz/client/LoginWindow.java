@@ -10,7 +10,8 @@ import java.io.IOException;
 public class LoginWindow extends JFrame {
     private final ChatClient client;
     JTextField loginField = new JTextField();
-    JPasswordField passwordField = new JPasswordField();
+    JTextField countryField = new JTextField();
+    JTextField ageField = new JTextField();
     JButton loginButton = new JButton("Login");
 
     public LoginWindow() {
@@ -33,7 +34,8 @@ public class LoginWindow extends JFrame {
         JPanel p = new JPanel();
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
         p.add(loginField);
-        p.add(passwordField);
+        p.add(countryField);
+        p.add(ageField);
         p.add(loginButton);
 
         loginButton.addActionListener(e -> doLogin());
@@ -47,10 +49,11 @@ public class LoginWindow extends JFrame {
 
     private void doLogin() {
         String login = loginField.getText();
-        String password = new String(passwordField.getPassword());
+        String country = countryField.getText();
+        String age = ageField.getText();
 
         try {
-            if (client.login(login, password)) {
+            if (client.login(login, country, age)) {
                 // bring up the user list window
                 UserListPane userListPane = new UserListPane(client);
                 JFrame frame = new JFrame("User List");

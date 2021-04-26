@@ -2,20 +2,29 @@ package com.luiz.server;
 
 import java.io.*;
 import java.net.Socket;
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ServerWorker extends Thread {
 
     private final Socket clientSocket;
     private final Server server;
-    private String login = null;
+    private String username = null;
+    private String country = null;
+    private String age = null;
+
+    private Long lastTime;
     private OutputStream outputStream;
-    private HashSet<String> topicSet = new HashSet<>();
+    private final ArrayList<String> blockedUsers = new ArrayList<>();
 
     public ServerWorker(Server server, Socket clientSocket) {
         this.server = server;
         this.clientSocket = clientSocket;
+        updateLastTime();
+    }
+
+    private void updateLastTime() {
+        this.lastTime = System.currentTimeMillis();
     }
 
     @Override
@@ -36,24 +45,28 @@ public class ServerWorker extends Thread {
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
         String line;
         while ( (line = reader.readLine()) != null) {
-            String[] tokens = line.split(" ", 3);
+            System.out.println(line);
+            updateLastTime();
+            String[] tokens = line.split(" ", 4);
             if (tokens != null && tokens.length > 0) {
                 String cmd = tokens[0];
-                if ("logoff".equals(cmd) || "quit".equalsIgnoreCase(cmd)) {
-                    handleLogoff();
+                if ("/logoff".equals(cmd) || "/quit".equalsIgnoreCase(cmd)) {
+                    handleLogoff(null);
                     break;
-                } else if ("login".equalsIgnoreCase(cmd)) {
-                    handleLogin(outputStream, tokens);
-                } else if ("msg".equalsIgnoreCase(cmd)) {
+                } else if ("/login".equalsIgnoreCase(cmd)) {
+                    handleLogin(tokens);
+                } else if ("/block".equalsIgnoreCase(cmd)) {
+                    String[] tokensMsg = line.split(" ", 2);
+                    if (tokensMsg.length == 2) handleBlockUser(tokensMsg[1]);
+                    else send("Invalid Username");
+                } else if ("/unblock".equalsIgnoreCase(cmd)) {
                     String[] tokensMsg = line.split(" ", 3);
-                    handleMessage(tokensMsg);
-                } else if ("join".equalsIgnoreCase(cmd)) {
-                    handleJoin(tokens);
-                } else if ("leave".equalsIgnoreCase(cmd)) {
-                    handleLeave(tokens);
+                    if (tokensMsg.length == 2) handleUnblockUser(tokensMsg[1]);
+                    else send("Invalid Username");
+                } else if ("/users".equalsIgnoreCase(cmd)) {
+                    sendUsers();
                 } else {
-                    String msg = "unknown " + cmd + "\n";
-                    outputStream.write(msg.getBytes());
+                    handleMessage(line);
                 }
             }
         }
@@ -61,111 +74,142 @@ public class ServerWorker extends Thread {
         clientSocket.close();
     }
 
-    private void handleLeave(String[] tokens) {
-        if (tokens.length > 1) {
-            String topic = tokens[1];
-            topicSet.remove(topic);
-        }
-    }
-
-    public boolean isMemberOfTopic(String topic) {
-        return topicSet.contains(topic);
-    }
-
-    private void handleJoin(String[] tokens) {
-        if (tokens.length > 1) {
-            String topic = tokens[1];
-            topicSet.add(topic);
-        }
-    }
-
-    // format: "msg" "login" body...
-    // format: "msg" "#topic" body...
-    private void handleMessage(String[] tokens) {
-        String sendTo = tokens[1];
-        String body = tokens[2];
-
-        boolean isTopic = sendTo.charAt(0) == '#';
-
-        List<ServerWorker> workerList = server.getWorkerList();
-        for(ServerWorker worker : workerList) {
-            if (isTopic) {
-                if (worker.isMemberOfTopic(sendTo)) {
-                    String outMsg = "msg " + sendTo + ":" + login + " " + body + "\n";
-                    worker.send(outMsg);
-                }
-            } else {
-                if (sendTo.equalsIgnoreCase(worker.getLogin())) {
-                    String outMsg = "msg " + login + " " + body + "\n";
-                    worker.send(outMsg);
-                }
-            }
-        }
-    }
-
-    private void handleLogoff() throws IOException {
+    public void handleLogoff(String msg) throws IOException {
         server.removeWorker(this);
-        List<ServerWorker> workerList = server.getWorkerList();
-
+        if (msg != null) send(msg);
         // send other online users current user's status
-        String onlineMsg = "offline " + login + "\n";
-        for(ServerWorker worker : workerList) {
-            if (worker.getLogin() != null && !login.equals(worker.getLogin())) {
+        String onlineMsg = "offline " + username + "\n";
+        for(ServerWorker worker : server.getWorkerList()) {
+            if (worker.getUsername() != null
+                    && !username.equals(worker.getUsername())
+                    && !worker.isUserBlocked(username)
+                    && !isUserBlocked(worker.getUsername())) {
                 worker.send(onlineMsg);
             }
         }
         clientSocket.close();
     }
 
-    public String getLogin() {
-        return login;
-    }
+    private void handleLogin(String[] tokens) throws IOException {
+        if (tokens.length == 4) {
+            String username = tokens[1];
+            String country = tokens[2];
+            String age = tokens[3];
 
-    private void handleLogin(OutputStream outputStream, String[] tokens) throws IOException {
-        if (tokens.length == 3) {
-            String login = tokens[1];
-            String password = tokens[2];
-
-            if ((login.equals("guest") && password.equals("guest")) || (login.equals("jim") && password.equals("jim")) ) {
-                String msg = "ok login\n";
-                outputStream.write(msg.getBytes());
-                this.login = login;
-                System.out.println("User logged in succesfully: " + login);
+            if (isValidUsername(username) ) {
+                this.username = username;
+                this.country = country;
+                this.age = age;
+                System.out.println("User logged in succesfully: " + username);
 
                 List<ServerWorker> workerList = server.getWorkerList();
 
                 // send current user all other online logins
+                // checks if the user is blocked
+
+                send("ok login\n");
                 for(ServerWorker worker : workerList) {
-                    if (worker.getLogin() != null) {
-                        if (!login.equals(worker.getLogin())) {
-                            String msg2 = "online " + worker.getLogin() + "\n";
+                    if (worker.getUsername() != null
+                            && !worker.isUserBlocked(username)
+                            && !isUserBlocked(worker.getUsername())) {
+                        if (!username.equals(worker.getUsername())) {
+                            String msg2 = "online " + worker.getUsername() + "\n";
                             send(msg2);
                         }
                     }
                 }
 
                 // send other online users current user's status
-                String onlineMsg = "online " + login + "\n";
+                String onlineMsg = "online " + username + "\n";
                 for(ServerWorker worker : workerList) {
-                    if (!login.equals(worker.getLogin())) {
+                    if (!username.equals(worker.getUsername())
+                            && !worker.isUserBlocked(username)
+                            && !isUserBlocked(worker.getUsername())) {
                         worker.send(onlineMsg);
                     }
                 }
-            } else {
-                String msg = "error login\n";
-                outputStream.write(msg.getBytes());
-                System.err.println("Login failed for " + login);
             }
+        } else {
+            String msg = "error login, you must pass Name, Country and Age " +
+                    "(All in one word) and the username should be unique\n";
+            send(msg);
+            System.err.println("Login failed for " + username);
         }
     }
 
+    // Checks both sides to see if the user is blocked or not
+
+    private void handleMessage(String body) {
+        for(ServerWorker worker : server.getWorkerList()) {
+            if (worker.getUsername() != null
+                    && !worker.isUserBlocked(this.username)
+                    && !isUserBlocked(worker.getUsername())) {
+                String outMsg = "msg " + username + " " + body + "\n";
+                worker.send(outMsg);
+            }
+        }
+    }
+    private void handleBlockUser(String s) {
+        this.blockedUsers.add(s);
+        send("User: " + s + " was blocked" + "\n");
+    }
+
+    private void handleUnblockUser(String s) {
+        for (int i = 0; i < this.blockedUsers.size(); i++) {
+            if (this.blockedUsers.get(i).equalsIgnoreCase(s)) {
+                this.blockedUsers.remove(i);
+                send("User: " + s + " was unblocked" + "\n");
+                return;
+            }
+        }
+        send("User: " + s + " not found" + "\n");
+    }
+
+    private void sendUsers() {
+        String msg = "users ";
+        for(ServerWorker worker : server.getWorkerList()) {
+            if (worker.getUsername() != null
+                    && !worker.isUserBlocked(this.username)
+                    && !isUserBlocked(worker.getUsername())) {
+                msg += worker.getUsername() + " ";
+            }
+        }
+        System.out.println("users: " + msg);
+        send(msg + "\n");
+    }
+
+    private boolean isUserBlocked(String login) {
+        for (String user : this.blockedUsers) {
+            System.out.println("user: " + user + "");
+            if (user.equalsIgnoreCase(login)) return true;
+        }
+        return false;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    // Checks if the username is valid
+    private boolean isValidUsername(String username) {
+        for (ServerWorker worker : server.getWorkerList()) {
+            if (worker.getUsername() != null && worker.getUsername().equalsIgnoreCase(username))
+                return false;
+        }
+        return true;
+    }
+
     private void send(String msg) {
-        if (login != null) {
+        if (username != null) {
             try {
                 outputStream.write(msg.getBytes());
             } catch(Exception ex) {
                 ex.printStackTrace();
             }
         }
+    }
+
+    public Long getLastTime() {
+        return lastTime;
     }
 }

@@ -3,6 +3,7 @@ package com.luiz.client;
 import java.io.*;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class ChatClient {
     private final String serverName;
@@ -11,6 +12,7 @@ public class ChatClient {
     private InputStream serverIn;
     private OutputStream serverOut;
     private BufferedReader bufferedIn;
+    private String username;
 
     private ArrayList<UserStatusListener> userStatusListeners = new ArrayList<>();
     private ArrayList<MessageListener> messageListeners = new ArrayList<>();
@@ -32,45 +34,40 @@ public class ChatClient {
             public void offline(String login) {
                 System.out.println("OFFLINE: " + login);
             }
+
         });
 
-        client.addMessageListener(new MessageListener() {
-            @Override
-            public void onMessage(String fromLogin, String msgBody) {
-                System.out.println("You got a message from " + fromLogin + " ===>" + msgBody);
-            }
-        });
+        client.addMessageListener((fromLogin, msgBody) -> System.out.println("You got a message from " + fromLogin + " ===>" + msgBody));
 
         if (!client.connect()) {
             System.err.println("Connect failed.");
         } else {
             System.out.println("Connect successful");
 
-            if (client.login("guest", "guest")) {
+            if (client.login("test", "test", "22")) {
                 System.out.println("Login successful");
 
-                client.msg("jim", "Hello World!");
+                client.msg("Hello World!");
             } else {
                 System.err.println("Login failed");
             }
-
-            //client.logoff();
         }
     }
 
-    public void msg(String sendTo, String msgBody) throws IOException {
-        String cmd = "msg " + sendTo + " " + msgBody + "\n";
+    public void msg(String msgBody) throws IOException {
+        String cmd = msgBody + "\n";
         serverOut.write(cmd.getBytes());
     }
 
-    public boolean login(String login, String password) throws IOException {
-        String cmd = "login " + login + " " + password + "\n";
+    public boolean login(String username, String country, String age) throws IOException {
+        String cmd = "/login " + username + " " + country + " " + age + "\n";
+        this.username = username;
         serverOut.write(cmd.getBytes());
 
         String response = bufferedIn.readLine();
         System.out.println("Response Line:" + response);
 
-        if ("ok login".equalsIgnoreCase(response)) {
+        if ("ok login".contains(response)) {
             startMessageReader();
             return true;
         } else {
@@ -79,7 +76,7 @@ public class ChatClient {
     }
 
     public void logoff() throws IOException {
-        String cmd = "logoff\n";
+        String cmd = "/logoff\n";
         serverOut.write(cmd.getBytes());
     }
 
@@ -97,6 +94,7 @@ public class ChatClient {
         try {
             String line;
             while ((line = bufferedIn.readLine()) != null) {
+                System.out.println("Line: " + line);
                 String[] tokens = line.split(" ");
                 if (tokens != null && tokens.length > 0) {
                     String cmd = tokens[0];
@@ -107,6 +105,9 @@ public class ChatClient {
                     } else if ("msg".equalsIgnoreCase(cmd)) {
                         String[] tokensMsg = line.split(" ", 3);
                         handleMessage(tokensMsg);
+                    } else if ("users".equalsIgnoreCase(cmd)) {
+                        String[] tokensMsg = line.split(" ");
+                        handleUpdateUsers(tokensMsg);
                     }
                 }
             }
@@ -120,25 +121,40 @@ public class ChatClient {
         }
     }
 
+    public void triggerUpdateUsers() throws IOException {
+        serverOut.write("/users\n".getBytes());
+    }
+
+    // Updates users when connected
+    public void handleUpdateUsers(String[] tokensMsg) {
+        for (String user : Arrays.copyOfRange(tokensMsg, 1, tokensMsg.length)) {
+            if (user != null && !user.isEmpty()) {
+                String username = user;
+                if (user.equalsIgnoreCase(this.username)) username += " (You)";
+                handleOnline(new String[]{null, username});
+            }
+        }
+    }
+
     private void handleMessage(String[] tokensMsg) {
         String login = tokensMsg[1];
         String msgBody = tokensMsg[2];
 
-        for(MessageListener listener : messageListeners) {
+        for (MessageListener listener : messageListeners) {
             listener.onMessage(login, msgBody);
         }
     }
 
     private void handleOffline(String[] tokens) {
         String login = tokens[1];
-        for(UserStatusListener listener : userStatusListeners) {
+        for (UserStatusListener listener : userStatusListeners) {
             listener.offline(login);
         }
     }
 
     private void handleOnline(String[] tokens) {
         String login = tokens[1];
-        for(UserStatusListener listener : userStatusListeners) {
+        for (UserStatusListener listener : userStatusListeners) {
             listener.online(login);
         }
     }
@@ -171,6 +187,11 @@ public class ChatClient {
 
     public void removeMessageListener(MessageListener listener) {
         messageListeners.remove(listener);
+    }
+
+
+    public String getUsername() {
+        return username;
     }
 
 }

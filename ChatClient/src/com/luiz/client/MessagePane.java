@@ -6,27 +6,37 @@ import java.io.IOException;
 
 public class MessagePane extends JPanel implements MessageListener {
 
-    private final ChatClient client;
-    private final String login;
+    private ChatClient client;
 
     private DefaultListModel<String> listModel = new DefaultListModel<>();
     private JList<String> messageList = new JList<>(listModel);
     private JTextField inputField = new JTextField();
+    private JScrollPane jScrollPane;
+    JScrollBar jScrollBar;
 
-    public MessagePane(ChatClient client, String login) {
+    public MessagePane(ChatClient client) {
+
         this.client = client;
-        this.login = login;
 
         client.addMessageListener(this);
 
+        jScrollPane = new JScrollPane(messageList);
+        jScrollBar = jScrollPane.getVerticalScrollBar();
+
         setLayout(new BorderLayout());
-        add(new JScrollPane(messageList), BorderLayout.CENTER);
+        add(jScrollPane, BorderLayout.CENTER);
         add(inputField, BorderLayout.SOUTH);
+
+        try {
+            client.triggerUpdateUsers();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         inputField.addActionListener(e -> {
             try {
                 String text = inputField.getText();
-                client.msg(login, text);
+                client.msg(text);
                 listModel.addElement("You: " + text);
                 inputField.setText("");
             } catch (IOException e1) {
@@ -36,10 +46,11 @@ public class MessagePane extends JPanel implements MessageListener {
     }
 
     @Override
-    public void onMessage(String fromLogin, String msgBody) {
-        if (login.equalsIgnoreCase(fromLogin)) {
-            String line = fromLogin + ": " + msgBody;
+    public void onMessage(String fromUsername, String msgBody) {
+        if (!this.client.getUsername().equalsIgnoreCase(fromUsername)) {
+            String line = fromUsername + ": " + msgBody;
             listModel.addElement(line);
+            this.jScrollBar.setValue(this.jScrollBar.getMinimum());
         }
     }
 }

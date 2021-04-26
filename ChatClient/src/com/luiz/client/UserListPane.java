@@ -2,8 +2,6 @@ package com.luiz.client;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
@@ -23,32 +21,23 @@ public class UserListPane extends JPanel implements UserStatusListener {
         userListUI = new JList<>(userListModel);
         setLayout(new BorderLayout());
         add(new JScrollPane(userListUI), BorderLayout.CENTER);
+        MessagePane messagePane = new MessagePane(client);
 
-        userListUI.addMouseListener(new MouseAdapter() {
+        JFrame f = new JFrame("Messages");
+        f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        f.addWindowListener(new WindowAdapter() {
             @Override
-            public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() > 1) {
-                    String login = userListUI.getSelectedValue();
-                    MessagePane messagePane = new MessagePane(client, login);
-
-                    JFrame f = new JFrame("Message: " + login);
-                    f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-                    f.addWindowListener(new WindowAdapter() {
-                        @Override
-                        public void windowClosing(WindowEvent e) {
-                            try {
-                                client.logoff();
-                            } catch (IOException ioException) {
-                                ioException.printStackTrace();
-                            }
-                        }
-                    });
-                    f.setSize(500, 500);
-                    f.getContentPane().add(messagePane, BorderLayout.CENTER);
-                    f.setVisible(true);
+            public void windowClosing(WindowEvent e) {
+                try {
+                    client.logoff();
+                } catch (IOException ioException) {
+                    ioException.printStackTrace();
                 }
             }
         });
+        f.setSize(500, 500);
+        f.getContentPane().add(messagePane, BorderLayout.CENTER);
+        f.setVisible(true);
     }
 
     public static void main(String[] args) {
@@ -73,11 +62,15 @@ public class UserListPane extends JPanel implements UserStatusListener {
 
         if (client.connect()) {
             try {
-                client.login("guest", "guest");
+                client.login("guest", "guest", "35");
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+    }
+
+    public void clearList() {
+        userListModel.clear();
     }
 
     @Override
