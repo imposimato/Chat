@@ -40,27 +40,6 @@ public class UserListPane extends JPanel implements UserStatusListener {
         f.setVisible(true);
     }
 
-    public static void main(String[] args) {
-        ChatClient client = new ChatClient("localhost", 8818);
-
-        UserListPane userListPane = new UserListPane(client);
-        JFrame frame = new JFrame("User List");
-        frame.addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) {
-                try {
-                    client.logoff();
-                } catch (IOException ioException) {
-                    ioException.printStackTrace();
-                }
-            }
-        });
-        frame.setSize(400, 600);
-
-        frame.getContentPane().add(userListPane, BorderLayout.CENTER);
-        frame.setVisible(true);
-    }
-
     // Listeners to update the online panel
     @Override
     public void online(String login) {

@@ -22,7 +22,7 @@ public class ChatClient {
         this.serverPort = serverPort;
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         ChatClient client = new ChatClient("localhost", 8818);
         client.addUserStatusListener(new UserStatusListener() {
             @Override

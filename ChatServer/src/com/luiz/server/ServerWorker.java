@@ -48,7 +48,6 @@ public class ServerWorker extends Thread {
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
         String line;
         while ( (line = reader.readLine()) != null) {
-            System.out.println(line);
             updateLastTime();
             String[] tokens = line.split(" ", 4);
             if (tokens != null && tokens.length > 0) {
@@ -95,7 +94,7 @@ public class ServerWorker extends Thread {
     }
 
     // After the connection is done it'll set the users attibutes
-    private void handleLogin(String[] tokens) throws IOException {
+    private void handleLogin(String[] tokens) {
         if (tokens.length == 4) {
             String username = tokens[1];
             String country = tokens[2];

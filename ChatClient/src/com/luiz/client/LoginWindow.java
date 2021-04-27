@@ -86,7 +86,7 @@ public class LoginWindow extends JFrame {
                 setVisible(false);
             } else {
                 // show error message
-                JOptionPane.showMessageDialog(this, "Invalid login/password.");
+                JOptionPane.showMessageDialog(this, "Invalid Username.");
             }
         } catch (IOException e) {
             e.printStackTrace();
