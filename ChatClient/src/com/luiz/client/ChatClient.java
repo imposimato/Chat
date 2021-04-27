@@ -43,14 +43,6 @@ public class ChatClient {
             System.err.println("Connect failed.");
         } else {
             System.out.println("Connect successful");
-
-            if (client.login("test", "test", "22")) {
-                System.out.println("Login successful");
-
-                client.msg("Hello World!");
-            } else {
-                System.err.println("Login failed");
-            }
         }
     }
 
@@ -136,15 +128,17 @@ public class ChatClient {
         }
     }
 
+    // handle messages
     private void handleMessage(String[] tokensMsg) {
-        String login = tokensMsg[1];
+        String username = tokensMsg[1];
         String msgBody = tokensMsg[2];
 
         for (MessageListener listener : messageListeners) {
-            listener.onMessage(login, msgBody);
+            listener.onMessage(username, msgBody);
         }
     }
 
+    // will send offline status to users
     private void handleOffline(String[] tokens) {
         String login = tokens[1];
         for (UserStatusListener listener : userStatusListeners) {
@@ -152,6 +146,7 @@ public class ChatClient {
         }
     }
 
+    // will send online status to users
     private void handleOnline(String[] tokens) {
         String login = tokens[1];
         for (UserStatusListener listener : userStatusListeners) {
@@ -159,10 +154,10 @@ public class ChatClient {
         }
     }
 
+    // Creates a new socket and connects to the server
     public boolean connect() {
         try {
             this.socket = new Socket(serverName, serverPort);
-            System.out.println("Client port is " + socket.getLocalPort());
             this.serverOut = socket.getOutputStream();
             this.serverIn = socket.getInputStream();
             this.bufferedIn = new BufferedReader(new InputStreamReader(serverIn));
@@ -172,6 +167,11 @@ public class ChatClient {
         }
         return false;
     }
+
+    /*
+    These methods are using the listeners
+    They'll populate a list of these listeners
+     */
 
     public void addUserStatusListener(UserStatusListener listener) {
         userStatusListeners.add(listener);

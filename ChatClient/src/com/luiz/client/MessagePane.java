@@ -45,6 +45,7 @@ public class MessagePane extends JPanel implements MessageListener {
         });
     }
 
+    // Listener override, this will do the trick to listen the messages
     @Override
     public void onMessage(String fromUsername, String msgBody) {
         if (!this.client.getUsername().equalsIgnoreCase(fromUsername)) {

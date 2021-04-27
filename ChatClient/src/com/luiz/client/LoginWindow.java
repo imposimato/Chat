@@ -9,9 +9,12 @@ import java.io.IOException;
 
 public class LoginWindow extends JFrame {
     private final ChatClient client;
-    JTextField loginField = new JTextField();
+    JTextField usernameField = new JTextField();
     JTextField countryField = new JTextField();
     JTextField ageField = new JTextField();
+    JLabel usernameLabel = new JLabel("Username");
+    JLabel countryLabel = new JLabel("Country");
+    JLabel ageLabel = new JLabel("Age");
     JButton loginButton = new JButton("Login");
 
     public LoginWindow() {
@@ -33,8 +36,14 @@ public class LoginWindow extends JFrame {
 
         JPanel p = new JPanel();
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
-        p.add(loginField);
+        usernameLabel.setLabelFor(usernameField);
+        countryLabel.setLabelFor(countryField);
+        ageLabel.setLabelFor(ageField);
+        p.add(usernameLabel);
+        p.add(usernameField);
+        p.add(countryLabel);
         p.add(countryField);
+        p.add(ageLabel);
         p.add(ageField);
         p.add(loginButton);
 
@@ -47,8 +56,9 @@ public class LoginWindow extends JFrame {
         setVisible(true);
     }
 
+    // it'll grab the text fields and send to the server
     private void doLogin() {
-        String login = loginField.getText();
+        String login = usernameField.getText();
         String country = countryField.getText();
         String age = ageField.getText();
 

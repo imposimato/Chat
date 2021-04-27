@@ -18,6 +18,7 @@ public class Server extends Thread {
         return workerList;
     }
 
+    // Server is an instance that will run in a separated thread to keep listening to connections
     @Override
     public void run() {
         try {
@@ -28,10 +29,10 @@ public class Server extends Thread {
                 Socket clientSocket = serverSocket.accept();
                 System.out.println("Accepted connection from " + clientSocket);
                 ServerWorker worker = new ServerWorker(this, clientSocket);
-//                CheckActivity checkActivity = new CheckActivity(this, 60 * 1000);
+                CheckActivity checkActivity = new CheckActivity(this, 60 * 1000);
                 workerList.add(worker);
                 worker.start();
-//                checkActivity.start();
+                checkActivity.start();
             }
         } catch (IOException e) {
             e.printStackTrace();

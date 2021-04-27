@@ -24,9 +24,11 @@ public class ServerWorker extends Thread {
     }
 
     private void updateLastTime() {
+        // This will keep track of the last user's activity
         this.lastTime = System.currentTimeMillis();
     }
 
+    // This is the user representation object in the server
     @Override
     public void run() {
         try {
@@ -38,6 +40,7 @@ public class ServerWorker extends Thread {
         }
     }
 
+    // This method will create the socket to connect to the user
     private void handleClientSocket() throws IOException, InterruptedException {
         InputStream inputStream = clientSocket.getInputStream();
         this.outputStream = clientSocket.getOutputStream();
@@ -70,10 +73,11 @@ public class ServerWorker extends Thread {
                 }
             }
         }
-
+        // Finally it'll close the connection (hopefully)
         clientSocket.close();
     }
 
+    // Method to close client connection
     public void handleLogoff(String msg) throws IOException {
         server.removeWorker(this);
         if (msg != null) send(msg);
@@ -90,6 +94,7 @@ public class ServerWorker extends Thread {
         clientSocket.close();
     }
 
+    // After the connection is done it'll set the users attibutes
     private void handleLogin(String[] tokens) throws IOException {
         if (tokens.length == 4) {
             String username = tokens[1];
@@ -106,7 +111,6 @@ public class ServerWorker extends Thread {
 
                 // send current user all other online logins
                 // checks if the user is blocked
-
                 send("ok login\n");
                 for(ServerWorker worker : workerList) {
                     if (worker.getUsername() != null
@@ -137,8 +141,8 @@ public class ServerWorker extends Thread {
         }
     }
 
+    // The messages will go through this method
     // Checks both sides to see if the user is blocked or not
-
     private void handleMessage(String body) {
         for(ServerWorker worker : server.getWorkerList()) {
             if (worker.getUsername() != null
@@ -149,11 +153,14 @@ public class ServerWorker extends Thread {
             }
         }
     }
+
+    // Adds any given user to the block list
     private void handleBlockUser(String s) {
         this.blockedUsers.add(s);
         send("User: " + s + " was blocked" + "\n");
     }
 
+    // Unblocks the user
     private void handleUnblockUser(String s) {
         for (int i = 0; i < this.blockedUsers.size(); i++) {
             if (this.blockedUsers.get(i).equalsIgnoreCase(s)) {
@@ -165,6 +172,7 @@ public class ServerWorker extends Thread {
         send("User: " + s + " not found" + "\n");
     }
 
+    // Method called at any moment by the user to get the status
     private void sendUsers() {
         String msg = "users ";
         for(ServerWorker worker : server.getWorkerList()) {
@@ -178,6 +186,7 @@ public class ServerWorker extends Thread {
         send(msg + "\n");
     }
 
+    // Checks both ways if either part blocked the other
     private boolean isUserBlocked(String login) {
         for (String user : this.blockedUsers) {
             System.out.println("user: " + user + "");
@@ -190,7 +199,7 @@ public class ServerWorker extends Thread {
         return username;
     }
 
-    // Checks if the username is valid
+    // Checks if the username is unique
     private boolean isValidUsername(String username) {
         for (ServerWorker worker : server.getWorkerList()) {
             if (worker.getUsername() != null && worker.getUsername().equalsIgnoreCase(username))
@@ -199,6 +208,7 @@ public class ServerWorker extends Thread {
         return true;
     }
 
+    // Handles sending the message to client
     private void send(String msg) {
         if (username != null) {
             try {

@@ -15,14 +15,18 @@ public class CheckActivity extends Thread {
     public void run() {
         // Will check from time to time if the user is still alive
         while (true) {
-            for (ServerWorker worker: server.getWorkerList()) {
-                if (worker.getLastTime() != null &&
-                        System.currentTimeMillis() - worker.getLastTime() > timeout) {
-                    try {
-                        worker.handleLogoff("Disconnected due to inactivity");
-                    } catch (IOException e) {
-                        e.printStackTrace();
+            for (ServerWorker worker : server.getWorkerList()) {
+                try {
+                    if (worker.getLastTime() != null &&
+                            System.currentTimeMillis() - worker.getLastTime() > timeout) {
+                        try {
+                            worker.handleLogoff("Disconnected due to inactivity");
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     }
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
             }
             try {
